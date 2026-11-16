@@ -53,7 +53,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
 .stat span { display: block; color: var(--dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap; }
 .stat b { display: block; font-size: 21px; font-weight: 700; margin-top: 2px; }
 .stat i { display: block; font-style: normal; color: var(--faint); font-size: 11.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stat .hist { display: block; margin-top: 3px; }
+.stat .hist { display: block; margin-top: 5px; width: 92px; height: 32px; }
 .hist .hb { fill: var(--acc2); opacity: .75; }
 
 /* Sector overview */
@@ -68,6 +68,13 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
 .chartbox { border: 1px solid var(--line); border-radius: 8px; background: var(--bg2); padding: 9px 10px 7px; min-width: 0; }
 .charttitle { font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--dim); margin-bottom: 5px; }
 .sectorchart, .scatter, .peerchart { display: block; width: 100%; height: auto; }
+.peerchart { max-width: 460px; }
+.sectorchart.compact .slabel { font-size: 11.5px; }
+.sectorchart.compact .sval { font-size: 12.5px; }
+.scatter.compact .axis { font-size: 10.5px; }
+.scatter.compact .axis.dim2 { font-size: 11.5px; }
+.peerchart.compact .slabel, .peerchart.compact .sval { font-size: 12px; }
+.peerchart.compact .axis { font-size: 11px; }
 .slabel { fill: var(--dim); font-size: 11px; }
 .sval { fill: var(--text); font-size: 11px; font-weight: 600; }
 .speers { fill: var(--faint); font-size: 10.5px; }
@@ -110,6 +117,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
 .spot h2, .boardhead h2 { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); margin: 0 0 10px; }
 .spotgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .spotcard {
+  min-width: 0;
   border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 11px; cursor: pointer;
   background: linear-gradient(165deg, var(--panel2), var(--panel) 70%);
   transition: border-color .15s, transform .15s;
@@ -161,7 +169,8 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
 .layout { display: flex; gap: 16px; align-items: flex-start; }
 .boardwrap { flex: 1 1 auto; min-width: 0; }
 .boardhead { display: flex; align-items: baseline; justify-content: space-between; }
-table.board { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+#board { overflow-x: auto; }
+table.board { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13.5px; }
 table.board th {
   text-align: left; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
   padding: 8px 9px; border-bottom: 1px solid var(--line2); cursor: pointer; user-select: none; white-space: nowrap;
@@ -213,9 +222,51 @@ ol.steps li::marker { color: var(--acc); font-weight: 700; }
 .hint { color: var(--faint); font-size: 13px; padding: 22px 4px; }
 
 footer.foot { margin-top: 30px; color: var(--faint); font-size: 12px; border-top: 1px solid var(--line); padding-top: 13px; max-width: 1060px; }
-@media (max-width: 1120px) {
-  .stats, .spotgrid { grid-template-columns: repeat(2, 1fr); }
+/* Mid desktops: tighten the five-across rows and the side detail so
+   nothing clips or crushes between 1024 and 1240 px. */
+@media (max-width: 1240px) and (min-width: 1024px) {
+  .stat { padding: 10px 11px 9px; }
+  .stat span { font-size: 10px; letter-spacing: .6px; }
+  .stat b { font-size: 19px; }
+  aside.detail { flex-basis: 356px; width: 356px; }
+}
+
+/* Tablet and below: stack the layout, charts go full width, the board
+   wraps at full width and the table scrolls inside its own box. Stat
+   cards run 3 + 2 on a six-column grid so both rows stay even. */
+@media (max-width: 1023px) {
+  .stats { grid-template-columns: repeat(6, 1fr); }
+  .stat { grid-column: span 2; }
+  .stat:nth-child(4), .stat:nth-child(5) { grid-column: span 3; }
+  .spotgrid { grid-template-columns: repeat(2, 1fr); }
   .charts { grid-template-columns: 1fr; }
-  .layout { flex-direction: column; }
+  .layout { flex-direction: column; align-items: stretch; }
+  .boardwrap { width: 100%; }
   aside.detail { flex: none; width: 100%; position: static; max-height: none; }
+  table.board th, table.board td { padding: 7px 6px; }
+  .bar { width: 84px; }
+  .bar.wide, .spot-bar { width: auto; }
+}
+
+/* Small screens: one column, roomier page margins, stat labels may wrap
+   instead of clipping, the last stat card takes the full row, and every
+   control grows to a comfortable tap target. */
+@media (max-width: 720px) {
+  #app { padding: 16px 14px 36px; }
+  .logo { font-size: 22px; letter-spacing: 3px; }
+  .tagline { font-size: 12.5px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat, .stat:nth-child(4) { grid-column: auto; }
+  .stat:nth-child(5) { grid-column: 1 / -1; }
+  .stat span { white-space: normal; line-height: 1.3; }
+  .sector { padding: 12px 12px 11px; }
+  .controls { position: static; padding: 9px 10px; gap: 8px; }
+  .controls input[type="search"] { flex: 1 1 100%; width: auto; padding: 10px 12px; }
+  .controls select { flex: 1 1 auto; padding: 10px 9px; }
+  .controls label.tgl { min-height: 40px; }
+  .viewswitch { margin-left: 0; }
+  .viewswitch button { padding: 10px 13px; }
+  .mchip { padding: 9px 12px; font-size: 12px; }
+  .spotcard { padding: 11px 12px 10px; }
+  aside.detail { padding: 15px 14px 13px; }
 }

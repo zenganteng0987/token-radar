@@ -25,6 +25,14 @@
     if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
     return '$' + Math.round(v);
   }
+  // Axis ticks sit on exact powers of ten, so they drop the decimals:
+  // $10B is 23 units wide where $10.00B is 41 and clipped at the edge.
+  function tick(v) {
+    if (v >= 1e9) return '$' + (v / 1e9) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3) + 'K';
+    return '$' + v;
+  }
   function pct(v) {
     if (v === null || v === undefined) return '<span class="ratio">n/a</span>';
     var cls = v > 0 ? 'pos' : v < 0 ? 'neg' : '';
@@ -62,6 +70,12 @@
   var maxRatio = 0;
   rows.forEach(function (r) { var x = r.implied_value_usd / r.tvl_usd; if (x > maxRatio) maxRatio = x; });
 
+  /* ---------- responsive charts ---------- */
+  // Below 640 px the desktop chart geometry would shrink its labels to
+  // about 5 px, so the charts switch to a compact geometry with larger
+  // relative type. A resize only re-renders when the mode flips.
+  var compact = window.innerWidth < 640;
+
   function syncUrl() {
     var p = new URLSearchParams();
     if (state.q) p.set('q', state.q);
@@ -98,19 +112,22 @@
   function sectorChart() {
     var cms = R.category_multiples.slice().sort(function (a, b) { return b.multiple - a.multiple; }).slice(0, 10);
     var max = cms.length ? cms[0].multiple : 1;
-    var W = 560, rowh = 21, top = 6, labelW = 148, barX = labelW + 8, barW = W - barX - 112;
+    var W = compact ? 320 : 560, rowh = compact ? 26 : 21, top = compact ? 4 : 6;
+    var labelW = compact ? 116 : 148, barX = labelW + (compact ? 6 : 8);
+    var barW = W - barX - (compact ? 48 : 112);
+    var base = compact ? 16 : 14, barY = compact ? 6 : 4, barH = compact ? 13 : 12;
     var H = top * 2 + cms.length * rowh;
-    var s = '<svg class="sectorchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Category multiples chart">';
+    var s = '<svg class="sectorchart' + (compact ? ' compact' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Category multiples chart">';
     cms.forEach(function (cm, i) {
       var y = top + i * rowh;
       var w = Math.max(3, Math.round(barW * cm.multiple / max));
       var active = state.cat === cm.category;
       s += '<g class="srow' + (active ? ' active' : '') + '" data-cat="' + esc(cm.category) + '">' +
         '<rect class="hit" x="0" y="' + y + '" width="' + W + '" height="' + rowh + '"/>' +
-        '<text class="slabel" x="' + labelW + '" y="' + (y + 14) + '" text-anchor="end">' + esc(cm.category) + '</text>' +
-        '<rect class="sbar' + (cm.own ? '' : ' fb') + '" x="' + barX + '" y="' + (y + 4) + '" width="' + w + '" height="12" rx="3"/>' +
-        '<text class="sval mono" x="' + (barX + w + 7) + '" y="' + (y + 14) + '">' + mult(cm.multiple) + '</text>' +
-        '<text class="speers" x="' + (W - 2) + '" y="' + (y + 14) + '" text-anchor="end">' + cm.peers + ' peers</text>' +
+        '<text class="slabel" x="' + labelW + '" y="' + (y + base) + '" text-anchor="end">' + esc(cm.category) + '</text>' +
+        '<rect class="sbar' + (cm.own ? '' : ' fb') + '" x="' + barX + '" y="' + (y + barY) + '" width="' + w + '" height="' + barH + '" rx="3"/>' +
+        '<text class="sval mono" x="' + (barX + w + 7) + '" y="' + (y + base) + '">' + mult(cm.multiple) + '</text>' +
+        (compact ? '' : '<text class="speers" x="' + (W - 2) + '" y="' + (y + base) + '" text-anchor="end">' + cm.peers + ' peers</text>') +
       '</g>';
     });
     return s + '</svg>';
@@ -119,7 +136,7 @@
   // Implied value against TVL for every board row, log-log. The dashed line
   // is implied = TVL; the watchlist is drawn in amber over the rest.
   function scatter() {
-    var W = 470, H = 218, L = 40, B = 24, T = 10, Rt = 14;
+    var W = compact ? 320 : 470, H = compact ? 232 : 218, L = 40, B = 24, T = 10, Rt = compact ? 8 : 14;
     var pw = W - L - Rt, ph = H - T - B;
     var lo = Infinity, hi = -Infinity;
     rows.forEach(function (r) {
@@ -131,28 +148,28 @@
     var llo = log10(lo), lhi = log10(hi);
     function X(v) { return L + pw * (log10(v) - llo) / (lhi - llo); }
     function Y(v) { return T + ph - ph * (log10(v) - llo) / (lhi - llo); }
-    var s = '<svg class="scatter" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Implied value against TVL, log scales">';
+    var s = '<svg class="scatter' + (compact ? ' compact' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Implied value against TVL, log scales">';
     for (var e = llo; e <= lhi; e++) {
       var gx = X(Math.pow(10, e)), gy = Y(Math.pow(10, e));
       var anchor = e === llo ? 'start' : e === lhi ? 'end' : 'middle';
       s += '<line class="grid" x1="' + gx.toFixed(1) + '" y1="' + T + '" x2="' + gx.toFixed(1) + '" y2="' + (T + ph) + '"/>' +
         '<line class="grid" x1="' + L + '" y1="' + gy.toFixed(1) + '" x2="' + (L + pw) + '" y2="' + gy.toFixed(1) + '"/>' +
-        '<text class="axis" x="' + gx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' + money(Math.pow(10, e)) + '</text>' +
-        '<text class="axis" x="' + (L - 5) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + money(Math.pow(10, e)) + '</text>';
+        '<text class="axis" x="' + gx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' + tick(Math.pow(10, e)) + '</text>' +
+        '<text class="axis" x="' + (L - 5) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + tick(Math.pow(10, e)) + '</text>';
     }
     s += '<line class="diag" x1="' + X(lo) + '" y1="' + Y(lo) + '" x2="' + X(hi) + '" y2="' + Y(hi) + '"/>' +
       '<text class="axis dim2" x="' + (L + pw - 6) + '" y="' + Y(hi * 0.3).toFixed(1) + '" text-anchor="end">implied = TVL</text>';
     rows.forEach(function (r) {
       if (r.watchlist || r.slug === state.selected) return;
-      s += '<circle class="dot" data-slug="' + esc(r.slug) + '" cx="' + X(r.tvl_usd).toFixed(1) + '" cy="' + Y(r.implied_value_usd).toFixed(1) + '" r="2.4"><title>' + esc(r.name) + '</title></circle>';
+      s += '<circle class="dot" data-slug="' + esc(r.slug) + '" cx="' + X(r.tvl_usd).toFixed(1) + '" cy="' + Y(r.implied_value_usd).toFixed(1) + '" r="' + (compact ? 3 : 2.4) + '"><title>' + esc(r.name) + '</title></circle>';
     });
     rows.forEach(function (r) {
       if (!r.watchlist || r.slug === state.selected) return;
-      s += '<circle class="dot wl" data-slug="' + esc(r.slug) + '" cx="' + X(r.tvl_usd).toFixed(1) + '" cy="' + Y(r.implied_value_usd).toFixed(1) + '" r="3"><title>' + esc(r.name) + ' (watchlist)</title></circle>';
+      s += '<circle class="dot wl" data-slug="' + esc(r.slug) + '" cx="' + X(r.tvl_usd).toFixed(1) + '" cy="' + Y(r.implied_value_usd).toFixed(1) + '" r="' + (compact ? 3.6 : 3) + '"><title>' + esc(r.name) + ' (watchlist)</title></circle>';
     });
     var sel = bySlug[state.selected];
     if (sel) {
-      s += '<circle class="dot sel" data-slug="' + esc(sel.slug) + '" cx="' + X(sel.tvl_usd).toFixed(1) + '" cy="' + Y(sel.implied_value_usd).toFixed(1) + '" r="4"><title>' + esc(sel.name) + '</title></circle>';
+      s += '<circle class="dot sel" data-slug="' + esc(sel.slug) + '" cx="' + X(sel.tvl_usd).toFixed(1) + '" cy="' + Y(sel.implied_value_usd).toFixed(1) + '" r="' + (compact ? 4.6 : 4) + '"><title>' + esc(sel.name) + '</title></circle>';
     }
     return s + '</svg>';
   }
@@ -338,14 +355,15 @@
     if (!comps.length) return '';
     var shown = comps.slice(0, 8);
     var max = Math.max(comps[0].ratio, r.multiple) * 1.08;
-    var W = 366, rowh = 19, headH = 14, labelW = 108, barX = labelW + 6, barW = W - barX - 46;
+    var W = compact ? 330 : 366, rowh = 19, headH = 14, labelW = compact ? 96 : 108, barX = labelW + 6, barW = W - barX - 46;
+    var lim = compact ? 13 : 15;
     var H = headH + shown.length * rowh + 6;
     var mx = barX + Math.round(barW * r.multiple / max);
-    var s = '<svg class="peerchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Trading peers by market cap to TVL">';
+    var s = '<svg class="peerchart' + (compact ? ' compact' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Trading peers by market cap to TVL">';
     shown.forEach(function (c, i) {
       var y = headH + 2 + i * rowh;
       var w = Math.max(3, Math.round(barW * c.ratio / max));
-      s += '<text class="slabel" x="' + labelW + '" y="' + (y + 13) + '" text-anchor="end">' + esc(c.name.length > 15 ? c.name.slice(0, 14) + '…' : c.name) + '</text>' +
+      s += '<text class="slabel" x="' + labelW + '" y="' + (y + 13) + '" text-anchor="end">' + esc(c.name.length > lim ? c.name.slice(0, lim - 1) + '…' : c.name) + '</text>' +
         '<rect class="pbar" x="' + barX + '" y="' + (y + 3) + '" width="' + w + '" height="11" rx="3"/>' +
         '<text class="sval mono" x="' + (barX + w + 6) + '" y="' + (y + 13) + '">' + c.ratio.toFixed(2) + '×</text>';
     });
@@ -457,6 +475,11 @@
   });
   document.getElementById('vBoard').addEventListener('click', function () { state.view = 'board'; renderBoard(); syncUrl(); });
   document.getElementById('vTokened').addEventListener('click', function () { state.view = 'tokened'; renderBoard(); syncUrl(); });
+
+  window.addEventListener('resize', function () {
+    var c = window.innerWidth < 640;
+    if (c !== compact) { compact = c; refreshCharts(); renderDetail(); }
+  });
 
   renderBoard();
   renderDetail();
