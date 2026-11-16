@@ -24,6 +24,34 @@ must record no token and must not be a wrapped, staked or bridged product of
 a token that already trades, nor an exchange itself. No protocol is named or
 scored by hand; every number is computed from the snapshot.
 
+## What v2 adds
+
+- **The model's working, in the open.** Each protocol's detail view shows
+  its full arithmetic: TVL, the multiple it was priced at, whether that
+  multiple is its category's own median or the global one, exactly how many
+  trading peers set it, the growth and age factors, and the category's
+  largest trading peers. The page header carries every category's multiple
+  and peer count, and an "Already trading" view lists the peers themselves,
+  kept separate from the pre-token board they price.
+- **Category farm playbooks.** Plans are written per category family —
+  lending, DEX/liquidity, perps, restaking, stablecoin/yield, bridges —
+  because farming a lending market (supply, borrow, watch the health
+  factor) is not farming a DEX (swap, provide liquidity, mind impermanent
+  loss). The top 50 rows carry a deep seven-step plan with the family's
+  second mechanic and a fuller risk note; every other row carries five
+  solid steps. Every step names its dollar cost and its time.
+- **A rebuilt dashboard.** A dark sweep theme with a top-opportunities
+  spotlight, tier badges, implied-vs-TVL bars, search, category filter,
+  watchlist toggle, sortable columns and the pre-token / already-trading
+  view switch.
+
+The board holds all 200 protocols that pass the launch screens. The
+snapshot's other 142 tokenless protocols are centralised exchanges,
+wrapped or staked products of tokens that already trade, and canonical
+bridges — the same subjects the watchlist's own rule refuses — so the
+board takes every genuine candidate rather than pad itself with
+non-launches.
+
 ## Run it locally
 
 ```
@@ -37,14 +65,13 @@ output directory, plus `dossier.json`, the summary the judge reads, built
 with the vendored `vendor/makefun-board.ts`.
 
 Open `out/dashboard/index.html` in a browser (served over HTTP) to use the
-radar: sortable and filterable board, a detail view per protocol with the
-model's working, its tokened peers and its farm plan. Views can be linked
-with `?select=<slug>`, `?category=<name>`, `?chain=<name>` and `?watch=1`.
+radar. Views can be linked: `?select=<slug>`, `?cat=<category>`,
+`?watch=1`, `?q=<text>`, `?view=tokened`, `?sort=<key>&dir=-1`.
 
 ## Layout
 
 - `main.ts` — the entry program: snapshot in, board + dashboard data out.
-- `lib/model.ts` — the value model, the farm plans and the gate self-check.
+- `lib/model.ts` — the value model, the farm playbooks and the gate self-check.
 - `dashboard/` — the static page (no network, no framework).
 - `screenshots/` — the board, a detail view and a filtered view.
 - `vendor/makefun-board.ts` — the make.fun dossier library.
