@@ -368,7 +368,7 @@
         '<text class="sval mono" x="' + (barX + w + 6) + '" y="' + (y + 13) + '">' + c.ratio.toFixed(2) + '×</text>';
     });
     s += '<line class="med" x1="' + mx + '" y1="1" x2="' + mx + '" y2="' + (H - 1) + '"/>' +
-      '<text class="axis" x="' + Math.max(barX - 34, Math.min(mx + 4, W - 68)) + '" y="10">median ' + mult(r.multiple) + '</text>';
+      '<text class="axis" x="' + Math.max(barX - 34, Math.min(mx + 4, W - 78)) + '" y="10">median ' + mult(r.multiple) + '</text>';
     return s + '</svg>' + (comps.length > shown.length
       ? '<div class="mathnote">Top ' + shown.length + ' of ' + comps.length + ' trading peers by mcap/TVL; the median of all of them is the multiple applied.</div>' : '');
   }
