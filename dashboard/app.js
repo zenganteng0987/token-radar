@@ -1,11 +1,12 @@
-// Token Radar v3 dashboard. Renders window.RADAR (written beside dashboard/
+// Token Radar v4 dashboard. Renders window.RADAR (written beside dashboard/
 // by main.ts): a ranked board of pre-token protocols with the value model's
-// working shown per protocol, a sector overview of the category multiples
-// the model reads from, an implied-value scatter, category farm playbooks,
-// a spotlight of the top opportunities, and the already-trading peers behind
-// the multiples. Static page, no network. A view can be named in the
-// address: ?select=<slug>&cat=<category>&watch=1&q=<text>&view=tokened
-// &sort=<key>
+// working shown per protocol, a watchlist rail of the snapshot's covered
+// protocols, a sector overview of the category multiples the model reads
+// from, an implied-value scatter, a spotlight of the top opportunities, and
+// the already-trading peers behind the multiples. Every row's Peer cell
+// plots its category's largest trading peers against the multiple the model
+// applied. Static page, no network. A view can be named in the address:
+// ?select=<slug>&cat=<category>&watch=1&q=<text>&view=tokened&sort=<key>
 (function () {
   'use strict';
   var R = window.RADAR;
@@ -108,6 +109,44 @@
   };
   var maxRatio = 0;
   rows.forEach(function (r) { var x = r.implied_value_usd / r.tvl_usd; if (x > maxRatio) maxRatio = x; });
+
+  // One log scale for every peer strip on the page: it spans the ratios of
+  // all the largest trading peers in the data, the category medians and the
+  // global median, so strips in different rows compare at a glance.
+  var ratioLo = Infinity, ratioHi = -Infinity;
+  function seeRatio(v) { if (v > 0) { if (v < ratioLo) ratioLo = v; if (v > ratioHi) ratioHi = v; } }
+  Object.keys(R.comparables).forEach(function (c) {
+    R.comparables[c].forEach(function (p) { seeRatio(p.ratio); });
+  });
+  R.category_multiples.forEach(function (cm) { seeRatio(cm.multiple); });
+  seeRatio(R.global_multiple);
+  if (!isFinite(ratioLo)) { ratioLo = 0.05; ratioHi = 5; }
+  ratioLo = Math.max(0.01, ratioLo * 0.75);
+  ratioHi = ratioHi * 1.35;
+  var lRatioLo = log10(ratioLo), lRatioHi = log10(ratioHi);
+  function ratioX(v) { return 3 + 98 * (log10(Math.max(v, ratioLo)) - lRatioLo) / (lRatioHi - lRatioLo); }
+
+  // The row's peer strip: a dot for each of its category's largest trading
+  // peers at its own mcap/TVL, and a white tick at the multiple the model
+  // applied — the category median, or the global median where the category
+  // has too few trading peers of its own.
+  function peerStrip(r) {
+    var comps = R.comparables[r.category || 'Uncategorized'] || [];
+    var s = '<svg class="pstrip"' + catStyle(r.category || 'Uncategorized') + ' viewBox="0 0 104 13" aria-hidden="true">' +
+      '<line class="ptrack" x1="3" y1="6.5" x2="101" y2="6.5"/>';
+    comps.forEach(function (c) {
+      s += '<circle class="pdot" cx="' + ratioX(c.ratio).toFixed(1) + '" cy="6.5" r="2.6"><title>' +
+        esc(c.name) + ' — ' + c.ratio.toFixed(2) + '×</title></circle>';
+    });
+    s += '<line class="ptick" x1="' + ratioX(r.multiple).toFixed(1) + '" y1="1.5" x2="' +
+      ratioX(r.multiple).toFixed(1) + '" y2="11.5"/></svg>';
+    return s;
+  }
+  function ageShort(days) {
+    if (days === null || days === undefined) return '<span class="ratio">—</span>';
+    if (days < 365) return days + 'd';
+    return (days / 365.25).toFixed(1) + 'y';
+  }
 
   /* ---------- responsive charts ---------- */
   // Below 640 px the desktop chart geometry would shrink its labels to
@@ -238,6 +277,8 @@
     catCount[c] = (catCount[c] || 0) + 1;
   });
   var topCat = Object.keys(catCount).sort(function (a, b) { return catCount[b] - catCount[a]; })[0];
+  var gainers = rows.filter(function (r) { return r.change_7d !== null && r.change_7d > 0; }).length;
+  var reported = rows.filter(function (r) { return r.change_7d !== null; }).length;
 
   // The terminal strip: the snapshot's vital signs on one mono line,
   // hairline-separated, straight under the header.
@@ -246,7 +287,8 @@
     '<div class="sitem"><span>Protocols covered</span><b>' + R.protocol_count + '</b></div>' +
     '<div class="sitem"><span>Combined TVL</span><b>' + money(combinedTvl) + '</b></div>' +
     '<div class="sitem"><span>Watchlist</span><b>' + watchCount + '</b></div>' +
-    '<div class="sitem"><span>Top category</span><b>' + esc(topCat) + ' · ' + catCount[topCat] + '</b></div>';
+    '<div class="sitem"><span>Top category</span><b>' + esc(topCat) + ' · ' + catCount[topCat] + '</b></div>' +
+    '<div class="sitem"><span>Rising 7d</span><b>' + gainers + ' of ' + reported + '</b></div>';
 
   var statHtml =
     '<div class="stat"><span>Protocols scanned</span><b class="mono">' + R.protocol_count + '</b><i>snapshot of ' + esc(R.as_of) + '</i></div>' +
@@ -262,7 +304,7 @@
 
   app.innerHTML =
     '<header class="top">' +
-      '<div class="brand">' + MARK + '<div class="logo">TOKEN RADAR <span class="sub mono">v3</span></div></div>' +
+      '<div class="brand">' + MARK + '<div class="logo">TOKEN RADAR <span class="sub mono">v4</span></div></div>' +
       '<div class="tagline">Protocols that record no token yet, ranked by what a token would be worth if their record stayed as it is — and what to do to farm each one.</div>' +
       '<div class="snapchip mono">snapshot ' + esc(R.as_of) + ' · floor ' + money(R.floor_usd) + '</div>' +
     '</header>' +
@@ -292,6 +334,7 @@
       '</span>' +
     '</div>' +
     '<div class="layout">' +
+      '<aside class="rail" id="rail"></aside>' +
       '<div class="boardwrap"><div class="boardhead"><h2><span class="idx mono">03</span><span id="boardtitle"></span></h2></div><div id="board"></div></div>' +
       '<aside class="detail" id="detail"></aside>' +
     '</div>' +
@@ -307,9 +350,36 @@
       '<div class="cat">' + catTag(r.category || 'Uncategorized') + ' · ' + esc(r.chains.slice(0, 2).join(', ') || '—') + '</div>' +
       '<div class="imp mono">' + money(r.implied_value_usd) + '</div>' +
       '<div class="bar spot-bar"><i style="width:' + w + '%"></i></div>' +
-      '<div class="meta">TVL <b class="mono">' + money(r.tvl_usd) + '</b> · 7d ' + pct(r.change_7d) + ' · peers <b class="mono">' + mult(r.multiple) + '</b></div>' +
+      '<div class="meta">TVL <b class="mono">' + money(r.tvl_usd) + '</b> · 7d ' + pct(r.change_7d) + ' · peers <b class="mono">' + mult(r.multiple) + '</b>' +
+        (r.age_days !== null && r.age_days !== undefined ? ' · tracked <b class="mono">' + ageShort(r.age_days) + '</b>' : '') + '</div>' +
     '</div>';
   }).join('');
+
+  /* ---------- watchlist rail ---------- */
+  // The snapshot's watchlist as a standing entity list: every protocol at
+  // or above the floor that records no token, in board order, one click
+  // from its detail. The rail never filters; the board stays the whole.
+  var railEl = document.getElementById('rail');
+  var watchRows = rows.filter(function (r) { return r.watchlist; });
+  railEl.innerHTML =
+    '<div class="railhead"><span>Watchlist</span><b class="mono">' + watchRows.length + '</b></div>' +
+    '<div class="railsub">TVL at or above ' + money(R.floor_usd) + ' and no token recorded — the floor the board must cover, kept at hand.</div>' +
+    watchRows.map(function (r) {
+      return '<div class="ritem' + (r.slug === state.selected ? ' on' : '') + '" data-slug="' + esc(r.slug) + '">' +
+        '<span class="rrk mono">' + r.rank + '</span>' +
+        '<span class="rnm">' + esc(r.name) + '</span>' +
+        '<span class="rval mono">' + money(r.implied_value_usd) + '</span>' +
+      '</div>';
+    }).join('');
+  railEl.addEventListener('click', function (e) {
+    var item = e.target.closest('[data-slug]');
+    if (!item) return;
+    var slug = item.getAttribute('data-slug');
+    if (state.view !== 'board') { state.view = 'board'; renderBoard(); }
+    select(slug);
+    var tr = boardEl.querySelector('tr[data-slug="' + slug + '"]');
+    if (tr) tr.scrollIntoView({ block: 'nearest' });
+  });
 
   /* ---------- board ---------- */
   var boardEl = document.getElementById('board');
@@ -332,6 +402,7 @@
     tvl: function (r) { return r.tvl_usd; },
     chg: function (r) { return r.change_7d === null ? -1e9 : r.change_7d; },
     mult: function (r) { return r.multiple; },
+    age: function (r) { return r.age_days === null ? -1 : r.age_days; },
     implied: function (r) { return r.implied_value_usd; },
     ratio: function (r) { return r.implied_value_usd / r.tvl_usd; },
   };
@@ -355,8 +426,8 @@
     countEl.textContent = 'Showing ' + list.length + ' of ' + rows.length + ' protocols';
     var html = '<table class="board"><thead><tr>' +
       th('rank', '#') + th('name', 'Protocol') + th('cat', 'Category') +
-      th('tvl', 'TVL', 1) + th('chg', '7d', 1) + th('mult', 'Peer ×', 1) +
-      th('implied', 'Implied value', 1) + th('ratio', 'Implied / TVL', 1) +
+      th('tvl', 'TVL', 1) + th('chg', '7d', 1) + th('age', 'Age', 1) + th('mult', 'Peer ×', 1) +
+      th('implied', 'Implied value', 1) +
       '</tr></thead><tbody>';
     if (!list.length) {
       html += '<tr><td colspan="8"><div class="empty">' + MARK +
@@ -374,10 +445,10 @@
         '<td>' + catTag(cat) + '</td>' +
         '<td class="num mono">' + money(r.tvl_usd) + '</td>' +
         '<td class="num mono">' + pct(r.change_7d) + '</td>' +
-        '<td class="num mono">' + mult(r.multiple) + '</td>' +
+        '<td class="num mono">' + ageShort(r.age_days) + '</td>' +
+        '<td class="num mono">' + mult(r.multiple) + peerStrip(r) + '</td>' +
         '<td class="num mono"><b>' + money(r.implied_value_usd) + '</b>' +
           '<div class="ibar"' + catStyle(cat) + '><i style="width:' + w + '%"></i></div></td>' +
-        '<td class="num"><span class="ratio mono">' + ratio.toFixed(2) + '×</span></td>' +
       '</tr>';
     }).join('');
     boardEl.innerHTML = html + '</tbody></table>';
@@ -468,6 +539,12 @@
         '<span class="chip2">' + catTag(cat) + '</span>' +
         r.chains.map(function (c) { return '<span class="chip2">' + esc(c) + '</span>'; }).join('') +
       '</div>' +
+      '<div class="ctxrow">' +
+        '<div><span>Rank</span><b class="mono">' + r.rank + ' / ' + rows.length + '</b></div>' +
+        '<div><span>Implied / TVL</span><b class="mono">' + (r.implied_value_usd / r.tvl_usd).toFixed(2) + '×</b></div>' +
+        '<div><span>Peer set</span><b class="mono">' + r.multiple_peers + '</b></div>' +
+        '<div><span>Tracked</span><b class="mono">' + (r.age_days === null ? '—' : ageShort(r.age_days)) + '</b></div>' +
+      '</div>' +
       '<h3>The model\u2019s working</h3>' +
       '<table class="math">' +
         '<tr><td class="k">TVL</td><td class="v mono">' + money(r.tvl_usd) + '</td></tr>' +
@@ -477,7 +554,8 @@
         '<tr class="total"><td class="k">Implied value</td><td class="v mono">' + money(r.implied_value_usd) + '</td></tr>' +
       '</table>' +
       vsBars(r) +
-      '<div class="mathnote">Multiple: ' + multLine + '.<br>Growth: ' + growthLine + '.<br>Age: ' + ageLine + '.</div>' +
+      '<div class="mathnote">Multiple: ' + multLine + '.<br>Growth: ' + growthLine + '.<br>Age: ' + ageLine + '.<br>' +
+      'Sensitivity: at half the applied multiple the same record reads <b class="mono">' + money(Math.round(r.implied_value_usd / 2)) + '</b>; at double, <b class="mono">' + money(r.implied_value_usd * 2) + '</b>.</div>' +
       (peers ? '<h3>Trading peers in its category</h3>' + peers : '') +
       '<h3>Farm plan — ' + r.farm_steps.length + ' steps</h3>' +
       '<ol class="steps">' + r.farm_steps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>';
@@ -499,6 +577,9 @@
     if (!bySlug[slug]) return;
     state.selected = slug;
     renderDetail();
+    railEl.querySelectorAll('.ritem').forEach(function (n) {
+      n.classList.toggle('on', n.getAttribute('data-slug') === slug);
+    });
     var tr = boardEl.querySelector('tr[data-slug="' + slug + '"]');
     boardEl.querySelectorAll('tr.sel').forEach(function (n) { n.classList.remove('sel'); });
     if (tr) tr.classList.add('sel');

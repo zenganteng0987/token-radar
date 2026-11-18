@@ -1,8 +1,10 @@
-/* Token Radar v3: deep navy-black in the Arkham design family, rebuilt
+/* Token Radar v4: deep navy-black in the Arkham design family, built
    around hairlines instead of floating cards. Panels sit flat on the
    background and are divided, not boxed; one category colour system runs
    through chips, bars, dots and names; the header carries a radar-sweep
-   logomark and a mono terminal strip of the snapshot's vital signs. */
+   logomark and a mono terminal strip of the snapshot's vital signs. v4
+   adds the watchlist rail, a per-row peer strip in the board and a
+   context row in the detail file. */
 :root {
   --bg: #0a0e14;
   --bg2: #0d1119;
@@ -29,7 +31,7 @@ body {
   font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
 }
-#app { max-width: 1400px; margin: 0 auto; padding: 0 26px 44px; }
+#app { max-width: 1400px; margin: 0 auto; padding: 0 22px 44px; }
 .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 a { color: var(--acc2); }
 .mark { width: 30px; height: 30px; flex: none; display: block; }
@@ -37,7 +39,7 @@ a { color: var(--acc2); }
   display: inline-block; width: 7px; height: 7px; border-radius: 50%;
   background: var(--ch, var(--faint)); flex: none;
 }
-.catname { display: inline-flex; align-items: center; gap: 7px; color: var(--ch, var(--text)); font-weight: 500; white-space: nowrap; }
+.catname { display: inline-flex; align-items: center; gap: 7px; color: var(--ch, var(--text)); font-weight: 500; white-space: nowrap; font-size: 11.5px; }
 
 /* Header: brand lockup over a hairline, with a quiet dot grid — the
    radar's own texture — fading in from the right edge of the band. */
@@ -217,20 +219,48 @@ header.top::before {
 /* Layout + table: the board is one flat panel, the table full-bleed
    inside it, hairline row dividers, header row sticky under the toolbar
    wherever the wrapper is not itself the scroller. */
-.layout { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; }
+.layout { display: flex; gap: 12px; align-items: flex-start; margin-top: 14px; }
+
+/* Watchlist rail: the covered floor as a standing entity list at the
+   board's left hand, sticky and scrollable like the detail file. */
+aside.rail {
+  flex: 0 0 204px; width: 204px; position: sticky; top: 68px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  max-height: calc(100vh - 84px); overflow: auto; padding: 11px 0 8px;
+}
+.railhead {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0 13px; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .09em; color: var(--dim);
+}
+.railhead b { color: var(--text); font-size: 13px; }
+.railsub {
+  color: var(--faint); font-size: 11px; line-height: 1.45;
+  padding: 5px 13px 9px; border-bottom: 1px solid var(--line); margin-bottom: 5px;
+}
+.ritem {
+  display: flex; align-items: baseline; gap: 8px; padding: 5px 13px;
+  cursor: pointer; font-size: 12.5px; border-left: 2px solid transparent;
+}
+.ritem:hover { background: rgba(46, 107, 255, .05); }
+.ritem.on { background: rgba(46, 107, 255, .1); border-left-color: var(--acc); }
+.ritem .rrk { color: var(--faint); font-size: 11px; min-width: 22px; }
+.ritem .rnm { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; }
+.ritem .rval { color: var(--dim); font-size: 11.5px; }
+@media (max-width: 1400px) { aside.rail { display: none; } }
 .boardwrap { flex: 1 1 auto; min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .boardhead { padding: 12px 16px 11px; border-bottom: 1px solid var(--line); }
 #board { overflow-x: visible; }
-table.board { width: 100%; min-width: 620px; border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.board { width: 100%; min-width: 620px; border-collapse: separate; border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 table.board th {
   text-align: left; color: var(--dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
   background: var(--bg2);
-  padding: 8px 9px; border-bottom: 1px solid var(--line2); cursor: pointer; user-select: none; white-space: nowrap;
+  padding: 8px 8px; border-bottom: 1px solid var(--line2); cursor: pointer; user-select: none; white-space: nowrap;
   position: sticky; top: 55px; z-index: 3;
 }
 table.board th.num, table.board td.num { text-align: right; }
 table.board th .arr { color: var(--acc2); }
-table.board td { padding: 8px 9px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.board td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 table.board tbody tr:last-child td { border-bottom: 0; }
 table.board tbody tr { cursor: pointer; }
 table.board tbody tr:hover td { background: rgba(46, 107, 255, .05); }
@@ -246,8 +276,14 @@ table.board tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--acc); 
 .bar.wide { width: auto; margin-left: 0; flex: 1 1 auto; }
 .spot-bar { width: auto; margin-left: 0; margin-top: 7px; }
 .spot-bar i { background: var(--ch, var(--acc)); }
-.ibar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 4px; width: 110px; margin-left: auto; }
+.ibar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 4px; width: 100px; margin-left: auto; }
 .ibar i { display: block; height: 100%; background: var(--ch, var(--acc)); border-radius: 2px; }
+/* Peer strip: the category's largest trading peers as dots on one shared
+   log scale, the applied multiple as a white tick. */
+.pstrip { display: block; width: 96px; height: 13px; margin: 3px 0 0 auto; }
+.pstrip .ptrack { stroke: var(--line2); stroke-width: 1; }
+.pstrip .pdot { fill: var(--ch, var(--acc2)); opacity: .8; }
+.pstrip .ptick { stroke: #e9edf5; stroke-width: 1.4; }
 .ratio { font-size: 12px; color: var(--dim); }
 .empty { text-align: center; padding: 34px 16px 30px; color: var(--dim); font-size: 13px; }
 .empty .mark { width: 24px; height: 24px; margin: 0 auto 8px; opacity: .75; }
@@ -255,7 +291,7 @@ table.board tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--acc); 
 /* Detail: a case file. Definition rows for the model's working, hairline
    section breaks, farm steps numbered in mono. */
 aside.detail {
-  flex: 0 0 402px; width: 402px; position: sticky; top: 68px;
+  flex: 0 0 384px; width: 384px; position: sticky; top: 68px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
   padding: 17px 18px 15px; max-height: calc(100vh - 84px); overflow: auto;
 }
@@ -272,6 +308,19 @@ aside.detail h3 {
 .math tr.total td { border-bottom: 0; border-top: 1px solid var(--line2); padding: 8px 6px; background: var(--bg2); }
 .math tr.total td.v { color: var(--text); font-size: 17px; }
 .mathnote { color: var(--dim); font-size: 12.5px; margin-top: 7px; }
+.mathnote b { color: var(--text); font-weight: 600; }
+/* Detail context row: the file's vital signs in one divided strip. */
+.ctxrow {
+  display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg2); overflow: hidden;
+}
+.ctxrow > div { padding: 7px 10px 6px; border-left: 1px solid var(--line); min-width: 0; }
+.ctxrow > div:first-child { border-left: 0; }
+.ctxrow span {
+  display: block; font-size: 9.5px; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--faint); white-space: nowrap;
+}
+.ctxrow b { display: block; font-size: 13.5px; font-weight: 600; margin-top: 1px; white-space: nowrap; }
 .vsbars { margin-top: 11px; display: grid; gap: 6px; }
 .vsrow { display: flex; align-items: center; gap: 9px; font-size: 12px; }
 .vsrow span { color: var(--dim); width: 44px; text-transform: uppercase; letter-spacing: .8px; font-size: 10.5px; }
