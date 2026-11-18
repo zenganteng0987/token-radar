@@ -65,9 +65,17 @@ if (shots.length < 3) {
   process.stderr.write(`token radar: screenshots/ holds ${shots.length} images, 3 are required\n`);
   process.exit(1);
 }
+const SHOT_MAX_BYTES = 524_288;
 for (const name of shots) {
   if (!IMAGE_NAME.test(name)) {
     process.stderr.write(`token radar: screenshots/${name} has a name the dossier refuses\n`);
+    process.exit(1);
+  }
+  // Fail here, with the file named, rather than inside buildDossier: a
+  // screenshot past the dossier's per-image cap refuses the whole entry.
+  const bytes = statSync(join(out, 'screenshots', name)).size;
+  if (bytes > SHOT_MAX_BYTES) {
+    process.stderr.write(`token radar: screenshots/${name} is ${bytes} bytes, over the ${SHOT_MAX_BYTES} cap\n`);
     process.exit(1);
   }
 }

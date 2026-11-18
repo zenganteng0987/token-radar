@@ -49,6 +49,24 @@ scored by hand; every number is computed from the snapshot.
   watchlist toggle, sortable columns and the pre-token / already-trading
   view switch.
 
+## What v4 adds
+
+The model, the board and every figure are unchanged from v3; v4 is the
+same radar presented as a denser terminal:
+
+- **A watchlist rail.** The snapshot's 40 covered protocols stand at the
+  board's left hand in rank order — the floor the board must cover, one
+  click from each protocol's detail file.
+- **Peer strips in every row.** The Peer column now plots the category's
+  largest trading peers as dots on one shared log scale, with a white
+  tick at the multiple the model applied, so the pricing of a row can be
+  read against its peers at a glance.
+- **An Age column and a detail context row.** The board carries how long
+  each protocol has been tracked; each detail file opens with its rank,
+  implied/TVL, peer-set size and tracked age, and its model's working
+  gains a sensitivity line — the same record at half and at double the
+  applied multiple.
+
 The board holds all 200 protocols that pass the launch screens. The
 snapshot's other 142 tokenless protocols are centralised exchanges,
 wrapped or staked products of tokens that already trade, and canonical
@@ -77,5 +95,5 @@ radar. Views can be linked: `?select=<slug>`, `?cat=<category>`,
 - `main.ts` — the entry program: snapshot in, board + dashboard data out.
 - `lib/model.ts` — the value model, the farm playbooks and the gate self-check.
 - `dashboard/` — the static page (no network, no framework).
-- `screenshots/` — the board, a detail view and a filtered view.
+- `screenshots/` — the board, a detail view, a filtered view and the watchlist view.
 - `vendor/makefun-board.ts` — the make.fun dossier library.
